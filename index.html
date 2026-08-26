@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>人生清單 ‧ 待辦事項</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- 登入畫面：以信箱＋密碼登入，兩人共用同一組帳號即可看到同一份清單 -->
+<div id="auth-gate" class="auth-gate">
+  <div class="auth-gate-card panel">
+    <div class="auth-logo">
+      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" fill="#E8674B"/>
+        <path d="M14 24.5l6.5 6.5L34 17" stroke="#FFFBF3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <h2 class="brand-font" style="font-size:26px;margin:10px 0 6px">登入</h2>
+    <p class="muted" style="margin-bottom:16px">跟另一位共同維護的人使用同一組信箱與密碼登入，就會同步看到一樣的清單。這組帳號需先由管理者在 Firebase 主控台建立好。</p>
+    <form id="auth-gate-form">
+      <div class="field">
+        <label class="field-label">電子信箱</label>
+        <input type="email" id="auth-email-input" placeholder="example@mail.com" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label class="field-label">密碼</label>
+        <input type="password" id="auth-password-input" placeholder="至少 6 碼" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-btn">登入</button>
+    </form>
+    <p id="auth-gate-error" class="auth-gate-error" hidden></p>
+  </div>
+</div>
+
+<div class="app-root" id="app-root" hidden>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-row">
+        <div class="brand-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFBF3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div>
+          <h1 class="brand-font brand-title">人生清單 ‧ 待辦事項</h1>
+          <p class="brand-sub">共同維護 · 一起完成想做的事</p>
+        </div>
+        <div class="room-status">
+          <span id="user-badge" class="mono"></span>
+          <button type="button" id="logout-btn" class="logout-btn">登出</button>
+        </div>
+      </div>
+
+      <nav class="tabs-row">
+        <button class="tab-btn active" data-tab="life" type="button">🌱 人生清單</button>
+        <button class="tab-btn" data-tab="todo" type="button">✅ 待辦事項</button>
+      </nav>
+    </div>
+  </header>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <main class="container">
+
+    <!-- ============ 人生清單 ============ -->
+    <section id="tab-life" class="tab-panel">
+      <div class="layout">
+        <form id="life-form" class="form-panel panel">
+          <div class="panel-head">
+            <h2 class="brand-font" id="life-form-title">新增人生清單項目</h2>
+            <button type="button" id="life-cancel-edit" class="icon-btn" style="display:none" aria-label="取消編輯">✕</button>
+          </div>
+
+          <div class="field">
+            <label class="field-label">想做的事</label>
+            <input type="text" id="lf-title" placeholder="例如：去冰島看極光" required />
+          </div>
+
+          <div class="field">
+            <label class="field-label">分類</label>
+            <select id="lf-category"></select>
+          </div>
+
+          <div class="field">
+            <label class="field-label">目標年份（選填）</label>
+            <input type="number" id="lf-year" placeholder="例如 2028" min="2020" max="2200" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">備註（選填）</label>
+            <textarea id="lf-note" rows="3" placeholder="為什麼想做、需要準備什麼…"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="life-submit-btn">➕ 加入清單</button>
+        </form>
+
+        <div class="list-col">
+          <div class="filter-btn-row" id="life-category-buttons"></div>
+          <div class="stats-row" id="life-stats"></div>
+
+          <div class="filter-row">
+            <div class="search-wrap">
+              <span class="icon">🔍</span>
+              <input type="text" id="life-search" placeholder="搜尋想做的事" />
+              <button type="button" class="search-clear-btn" id="life-search-clear" aria-label="清除搜尋" hidden>✕</button>
+            </div>
+          </div>
+          <div class="status-filter-row" id="life-status-filter">
+            <button type="button" class="status-filter-btn active" data-status="all">全部</button>
+            <button type="button" class="status-filter-btn" data-status="active">進行中</button>
+            <button type="button" class="status-filter-btn" data-status="done">已達成</button>
+          </div>
+
+          <div id="life-list" class="card-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 待辦事項 ============ -->
+    <section id="tab-todo" class="tab-panel" hidden>
+      <div class="layout">
+        <form id="todo-form" class="form-panel panel">
+          <div class="panel-head">
+            <h2 class="brand-font" id="todo-form-title">新增待辦事項</h2>
+            <button type="button" id="todo-cancel-edit" class="icon-btn" style="display:none" aria-label="取消編輯">✕</button>
+          </div>
+
+          <div class="field">
+            <label class="field-label">事項</label>
+            <input type="text" id="tf-title" placeholder="例如：繳交房租" required />
+          </div>
+
+          <div class="field">
+            <label class="field-label">分類</label>
+            <select id="tf-category"></select>
+          </div>
+
+          <div class="field">
+            <label class="field-label">到期日（選填）</label>
+            <input type="date" id="tf-dueDate" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">優先度</label>
+            <div class="mode-toggle" id="tf-priority-buttons">
+              <button type="button" class="mode-toggle-btn priority-btn" data-priority="高">🔴 高</button>
+              <button type="button" class="mode-toggle-btn priority-btn active" data-priority="中">🟡 中</button>
+              <button type="button" class="mode-toggle-btn priority-btn" data-priority="低">🟢 低</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">重複</label>
+            <div class="mode-toggle" id="tf-recurring-buttons">
+              <button type="button" class="mode-toggle-btn recurring-btn active" data-recurring="none">不重複</button>
+              <button type="button" class="mode-toggle-btn recurring-btn" data-recurring="daily">每天</button>
+              <button type="button" class="mode-toggle-btn recurring-btn" data-recurring="weekly">每週</button>
+              <button type="button" class="mode-toggle-btn recurring-btn" data-recurring="monthly">每月</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">負責人（選填）</label>
+            <input type="text" id="tf-assignee" placeholder="姓名" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">備註（選填）</label>
+            <textarea id="tf-note" rows="2" placeholder="補充說明"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="todo-submit-btn">➕ 新增待辦</button>
+        </form>
+
+        <div class="list-col">
+          <div class="filter-btn-row" id="todo-category-buttons"></div>
+          <div class="stats-row" id="todo-stats"></div>
+
+          <div class="filter-row">
+            <div class="search-wrap">
+              <span class="icon">🔍</span>
+              <input type="text" id="todo-search" placeholder="搜尋待辦事項" />
+              <button type="button" class="search-clear-btn" id="todo-search-clear" aria-label="清除搜尋" hidden>✕</button>
+            </div>
+          </div>
+          <div class="status-filter-row" id="todo-status-filter">
+            <button type="button" class="status-filter-btn active" data-status="all">全部</button>
+            <button type="button" class="status-filter-btn" data-status="pending">待完成</button>
+            <button type="button" class="status-filter-btn" data-status="overdue">已逾期</button>
+            <button type="button" class="status-filter-btn" data-status="done">已完成</button>
+          </div>
+
+          <div id="todo-list" class="card-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Firebase（不需下載安裝，直接透過 CDN 載入） -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
