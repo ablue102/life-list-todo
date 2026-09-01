@@ -1,18 +1,24 @@
 /* =========================================================
    人生清單 ‧ 待辦事項 — 純前端版（無需建置工具）
    資料透過 Firebase Firestore 即時同步，多人共同編輯。
+   登入方式：Google 帳號登入（不是各自分開的資料，兩人共用同一份，
+   靠 Firestore 安全性規則把兩個人的 Google 帳號加進白名單來實現）。
 
    資料結構：
-   - users/{uid}/lifeGoals/{id}   人生清單項目（長期目標，沒有強制期限）
-   - users/{uid}/todos/{id}       待辦事項（有到期日、優先度、可設定重複）
+   - shared/{SHARED_SPACE_ID}/lifeGoals/{id}   人生清單項目（長期目標，沒有強制期限）
+   - shared/{SHARED_SPACE_ID}/todos/{id}       待辦事項（有到期日、優先度、可設定重複）
+
+   共用空間的代號，不是密碼（真正的存取控制在 Firestore 規則的 email 白名單），
+   單純只是這份共用資料在資料庫裡的路徑名稱，兩人都是連到同一個路徑即可。
    ========================================================= */
+const SHARED_SPACE_ID = "household";
 
 const LIFE_CATEGORIES = ["旅行探索", "學習成長", "職涯成就", "健康體能", "人際關係", "財務目標", "體驗清單", "其他"];
 const TODO_CATEGORIES = ["工作", "生活", "家庭", "購物", "其他"];
 const PRIORITY_ORDER = { "高": 0, "中": 1, "低": 2 };
 const RECURRING_LABEL = { none: "", daily: "🔁 每天", weekly: "🔁 每週", monthly: "🔁 每月" };
 
-// 閒置多久（分鐘）沒有操作就自動登出，需要重新輸入信箱密碼；設成 0 表示停用這個機制。
+// 閒置多久（分鐘）沒有操作就自動登出，需要重新用 Google 帳號登入；設成 0 表示停用這個機制。
 const IDLE_TIMEOUT_MINUTES = 60;
 
 // ---- Firebase 初始化 ----
@@ -123,36 +129,32 @@ function setupIdleTimeout() {
   setInterval(checkIdleTimeout, 60 * 1000);
 }
 
-// ---- 登入流程（信箱＋密碼） ----
+// ---- 登入流程（Google 帳號登入） ----
 function setupAuthGate() {
-  const form = document.getElementById("auth-gate-form");
-  const emailInput = document.getElementById("auth-email-input");
-  const passwordInput = document.getElementById("auth-password-input");
+  const googleLoginBtn = document.getElementById("google-login-btn");
   const errorMsg = document.getElementById("auth-gate-error");
-  const loginBtn = document.getElementById("login-btn");
 
   function showError(err) {
     const map = {
-      "auth/invalid-email": "信箱格式不正確。",
-      "auth/user-not-found": "找不到這個帳號，請確認信箱是否正確，或聯絡管理者確認帳號是否已建立。",
-      "auth/wrong-password": "密碼不正確。",
-      "auth/invalid-credential": "信箱或密碼不正確。",
-      "auth/weak-password": "密碼至少需要 6 碼。",
+      "auth/popup-closed-by-user": "登入視窗被關閉了，請再試一次。",
+      "auth/popup-blocked": "瀏覽器擋掉了登入彈出視窗，請允許彈出視窗後再試一次。",
+      "auth/unauthorized-domain": "這個網址還沒被加進 Firebase 授權網域清單，請到 Firebase 主控台 → Authentication → Settings → Authorized domains 加入。",
+      "auth/permission-denied": "這個 Google 帳號不在允許存取的名單裡，請確認 Firestore 安全性規則裡的 email 白名單。",
     };
     errorMsg.textContent = map[err.code] || `發生錯誤：${err.message}`;
     errorMsg.hidden = false;
   }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  googleLoginBtn.addEventListener("click", async () => {
     errorMsg.hidden = true;
-    loginBtn.disabled = true;
+    googleLoginBtn.disabled = true;
     try {
-      await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await auth.signInWithPopup(provider);
     } catch (err) {
       showError(err);
     } finally {
-      loginBtn.disabled = false;
+      googleLoginBtn.disabled = false;
     }
   });
 
@@ -177,9 +179,12 @@ function setupAuthGate() {
 
 function enterApp(user) {
   recordActivity();
-  lifeGoalsRef = db.collection("users").doc(user.uid).collection("lifeGoals");
-  todosRef = db.collection("users").doc(user.uid).collection("todos");
-  document.getElementById("user-badge").textContent = user.email;
+  // 兩人共用同一個固定路徑（不是各自的 uid 底下），所以才會同步看到同一份清單；
+  // 誰能連到這個路徑由 Firestore 安全性規則的 email 白名單把關，不是靠路徑本身保密。
+  const sharedDoc = db.collection("shared").doc(SHARED_SPACE_ID);
+  lifeGoalsRef = sharedDoc.collection("lifeGoals");
+  todosRef = sharedDoc.collection("todos");
+  document.getElementById("user-badge").textContent = user.displayName || user.email;
   document.getElementById("auth-gate").style.display = "none";
   document.getElementById("app-root").hidden = false;
 
@@ -211,7 +216,7 @@ function subscribeLife() {
     (err) => {
       console.error("人生清單讀取失敗：", err);
       document.getElementById("life-list").innerHTML =
-        `<div class="empty-state"><p>資料庫連線失敗，請確認 firebase-config.js 是否已填入正確設定，以及 Firestore 安全性規則是否允許存取 users/{你的帳號}/lifeGoals。</p></div>`;
+        `<div class="empty-state"><p>資料庫連線失敗，請確認 firebase-config.js 是否已填入正確設定，以及 Firestore 安全性規則的 email 白名單是否有加入這個 Google 帳號。</p></div>`;
     }
   );
 }
@@ -224,7 +229,7 @@ function subscribeTodo() {
     (err) => {
       console.error("待辦事項讀取失敗：", err);
       document.getElementById("todo-list").innerHTML =
-        `<div class="empty-state"><p>資料庫連線失敗，請確認 firebase-config.js 是否已填入正確設定，以及 Firestore 安全性規則是否允許存取 users/{你的帳號}/todos。</p></div>`;
+        `<div class="empty-state"><p>資料庫連線失敗，請確認 firebase-config.js 是否已填入正確設定，以及 Firestore 安全性規則的 email 白名單是否有加入這個 Google 帳號。</p></div>`;
     }
   );
 }

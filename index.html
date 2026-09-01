@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<!-- 登入畫面：以信箱＋密碼登入，兩人共用同一組帳號即可看到同一份清單 -->
+<!-- 登入畫面：用 Google 帳號登入，只有白名單裡的兩個 Google 帳號能看到／編輯這份共用清單 -->
 <div id="auth-gate" class="auth-gate">
   <div class="auth-gate-card panel">
     <div class="auth-logo">
@@ -21,18 +21,16 @@
       </svg>
     </div>
     <h2 class="brand-font" style="font-size:26px;margin:10px 0 6px">登入</h2>
-    <p class="muted" style="margin-bottom:16px">跟另一位共同維護的人使用同一組信箱與密碼登入，就會同步看到一樣的清單。這組帳號需先由管理者在 Firebase 主控台建立好。</p>
-    <form id="auth-gate-form">
-      <div class="field">
-        <label class="field-label">電子信箱</label>
-        <input type="email" id="auth-email-input" placeholder="example@mail.com" autocomplete="username" required />
-      </div>
-      <div class="field">
-        <label class="field-label">密碼</label>
-        <input type="password" id="auth-password-input" placeholder="至少 6 碼" autocomplete="current-password" required />
-      </div>
-      <button type="submit" class="btn btn-primary" id="login-btn">登入</button>
-    </form>
+    <p class="muted" style="margin-bottom:16px">用你的 Google 帳號登入。你跟另一位共同維護的人各自用自己的 Google 帳號登入，只要兩個帳號都已經加進白名單，就會同步看到同一份清單。</p>
+    <button type="button" class="btn btn-google" id="google-login-btn">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 16 3 9 7.6 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.9 14.1-5.1l-6.5-5.5C29.5 36.2 26.9 37 24 37c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9 41.4 16 45 24 45z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C41.4 36 44 30.5 44 24c0-1.2-.1-2.4-.4-3.5z"/>
+      </svg>
+      使用 Google 帳號登入
+    </button>
     <p id="auth-gate-error" class="auth-gate-error" hidden></p>
   </div>
 </div>

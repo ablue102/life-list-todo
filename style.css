@@ -70,6 +70,9 @@ label.field-label {
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--coral); color: #fff; width: 100%; }
 .btn-primary:hover { background: var(--coral-deep); }
+.btn-google { background: var(--panel); color: var(--ink); border: 1.5px solid var(--line); width: 100%; }
+.btn-google:hover { background: var(--bg); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .icon-btn {
   border: 1.5px solid var(--line);
